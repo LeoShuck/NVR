@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Leo's ISEB NVR Challenge Pack</title>
+<style>
+:root{--ink:#18212f;--muted:#64748b;--paper:#fff;--bg:#eef2f7;--accent:#315efb;--ok:#16803c;--bad:#b42318}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+.wrap{max-width:680px;margin:auto;padding:24px}.card{background:var(--paper);border-radius:18px;padding:26px;box-shadow:0 8px 30px #0001;margin:18px 0}
+h1{font-size:32px;margin:0 0 8px} h2{margin-top:0}.sub{color:var(--muted);line-height:1.5}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+button{border:0;border-radius:12px;padding:13px 16px;font-weight:700;cursor:pointer;background:var(--accent);color:white;font-size:15px}
+button.secondary{background:#e8edff;color:#243e9f}.testbtn{min-height:88px;text-align:left}
+.topbar{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap}.pill{background:#f1f5f9;border-radius:999px;padding:8px 12px;font-weight:700}
+.prompt{font-size:19px;font-weight:700;margin:18px 0 14px}.figure{display:flex;justify-content:center;align-items:center;min-height:180px;background:#fafbfd;border:1px solid #e5e7eb;border-radius:14px;padding:14px}
+.options{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px}.opt{background:white;color:var(--ink);border:2px solid #dbe2ea;min-height:112px;padding:8px}.opt:hover{border-color:var(--accent)}
+.opt svg,.figure svg{max-width:100%;height:auto}.small{font-size:13px;color:var(--muted)} .hidden{display:none}
+.resultbig{font-size:54px;font-weight:800;letter-spacing:-2px}.good{color:var(--ok)}.review{border-top:1px solid #e5e7eb;padding:16px 0}.review b{display:block;margin-bottom:5px}.wrong{color:var(--bad)}.right{color:var(--ok)}
+.progress{height:8px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin:12px 0}.progress>div{height:100%;background:var(--accent)}
+.notice{background:#fff7e6;border:1px solid #f4d58d;padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.45}
+@media(min-width:651px){.options{grid-template-columns:repeat(5,1fr)}.wrap{padding:10px}.card{padding:18px}h1{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<section id="home" class="card">
+<h1>Leo’s ISEB NVR Challenge Pack</h1>
+<p class="sub">Eight high-level non-verbal reasoning tests designed for strong ISEB Common Pre-Test candidates. Each test has 20 questions, a 30-minute practice timer, instant marking, a practice SAS estimate, and explanations for every question.</p>
+<div class="notice"><b>Important:</b> ISEB’s live test is adaptive and its official age-standardised score uses proprietary calibration against an independent-school sample. The “Practice SAS” here is therefore an <b>estimate for tracking practice only</b>, not an official or predicted ISEB score. Leo’s birth month is set to November 2015.</div>
+<h2 style="margin-top:22px">Choose a test</h2>
+<div class="grid" id="testButtons"></div>
+<p class="small" style="margin-top:18px">Best method: do one test at a time, on a laptop, without help. Tests 7–8 are deliberately much harder and are intended to stretch performance into the 125+ range. Accuracy matters more than rushing. In the real ISEB test you cannot go back to earlier questions.</p>
+</section>
+
+<section id="quiz" class="card hidden">
+<div class="topbar"><button class="secondary" onclick="quitTest()">← Tests</button><div class="pill" id="qnum"></div><div class="pill" id="timer"></div></div>
+<div class="progress"><div id="prog"></div></div>
+<div class="prompt" id="prompt"></div>
+<div class="figure" id="figure"></div>
+<div class="options" id="options"></div>
+<p class="small">Choose one answer. Once selected, it is locked and the next question appears.</p>
+</section>
+
+<section id="results" class="card hidden">
+<h2 id="resultTitle">Results</h2>
+<div class="grid">
+<div><div class="small">Practice SAS estimate</div><div class="resultbig" id="sas"></div></div>
+<div><div class="small">Correct</div><div class="resultbig" id="raw"></div></div>
+<div><div class="small">Accuracy</div><div class="resultbig" id="pct"></div></div>
+</div>
+<p id="band" class="sub"></p>
+<div class="notice">This SAS is a practice indicator, not an official ISEB score. The live ISEB NVR test is adaptive, can give pupils different numbers/difficulties of questions, and is age-standardised using ISEB’s own norm sample.</div>
+<h2 style="margin-top:24px">Answers & explanations</h2>
+<div id="review"></div>
+<button onclick="showHome()">Back to all tests</button>
+</section>
+</div>
+
+<script>
+const NS='http://www.w3.org/2000/svg';
+function svg(w=440,h=180){return `<svg viewBox="0 0 ${w} ${h}" xmlns="${NS}" aria-label="reasoning diagram">`}
+function shape(type,x,y,size=34,fill='none',rot=0,stroke='#18212f'){
+ let s='';
+ if(type==='circle') s=`<circle cx="${x}" cy="${y}" r="${size/2}" fill="${fill}" stroke="${stroke}" stroke-width="3"/>`;
+ if(type==='square') s=`<rect x="${x-size/2}" y="${y-size/2}" width="${size}" height="${size}" fill="${fill}" stroke="${stroke}" stroke-width="3"/>`;
+ if(type==='triangle') s=`<polygon points="${x},${y-size/2} ${x-size/2},${y+size/2} ${x+size/2},${y+size/2}" fill="${fill}" stroke="${stroke}" stroke-width="3"/>`;
+ if(type==='diamond') s=`<polygon points="${x},${y-size/2} ${x-size/2},${y} ${x},${y+size/2} ${x+size/2},${y}" fill="${fill}" stroke="${stroke}" stroke-width="3"/>`;
+ if(type==='arrow') s=`<path d="M ${x-size/2} ${y-7} H ${x+5} V ${y-16} L ${x+size/2} ${y} L ${x+5} ${y+16} V ${y+7} H ${x-size/2} Z" fill="${fill}" stroke="${stroke}" stroke-width="3"/>`;
+ return `<g transform="rotate(${rot} ${x} ${y})">${s}</g>`;
+}
+function mini(type,fill='none',rot=0,dots=0){
+ let out=svg(90,80)+shape(type,45,40,38,fill,rot);
+ for(let i=0;i<dots;i++){let a=2*Math.PI*i/Math.max(dots,1);out+=`<circle cx="${45+10*Math.cos(a)}" cy="${40+10*Math.sin(a)}" r="2.6" fill="#18212f"/>`}
+ return out+'</svg>';
+}
+function cell(x,y,content){return `<rect x="${x}" y="${y}" width="88" height="76" rx="6" fill="white" stroke="#cbd5e1" stroke-width="2"/>${content}`}
+function matrix(items, missing=8){
+ let out=svg(300,250);
+ items.forEach((it,i)=>{let r=Math.floor(i/3),c=i%3,x=18+c*94,y=10+r*80;out+=`<rect x="${x}" y="${y}" width="84" height="70" rx="5" fill="white" stroke="#cbd5e1" stroke-width="2"/>`; if(i===missing){out+=`<text x="${x+42}" y="${y+46}" text-anchor="middle" font-size="34" font-weight="800">?</text>`} else {out+=shape(it.type,x+42,y+35,30,it.fill,it.rot||0); if(it.dots){for(let d=0;d<it.dots;d++){let a=2*Math.PI*d/it.dots;out+=`<circle cx="${x+42+9*Math.cos(a)}" cy="${y+35+9*Math.sin(a)}" r="2.2" fill="#18212f"/>`}}}});
+ return out+'</svg>';
+}
+function sequence(items){
+ let out=svg(440,120); items.forEach((it,i)=>{let x=45+i*85;out+=shape(it.type,x,60,34,it.fill,it.rot||0); if(it.dots){for(let d=0;d<it.dots;d++){let a=2*Math.PI*d/it.dots;out+=`<circle cx="${x+10*Math.cos(a)}" cy="${60+10*Math.sin(a)}" r="2.5" fill="#18212f"/>`}} if(i<items.length-1)out+=`<text x="${x+42}" y="68" text-anchor="middle" font-size="22">→</text>`}); out+=`<text x="405" y="69" text-anchor="middle" font-size="34" font-weight="800">?</text>`; return out+'</svg>';
+}
+function optionHTML(o){ return typeof o==='string' && o.startsWith('<svg') ? o : mini(o.type,o.fill,o.rot||0,o.dots||0); }
+function q(prompt,fig,opts,ans,explanation,diff=2){return {prompt,fig,opts,ans,explanation,diff}}
+
+const W='#18212f', G='#d1d5db', N='none';
+const tests=[];
+
+function buildTest(t){
+ const Q=[];
+ // 1 rotation sequence
+ Q.push(q("Which figure comes next?",sequence([
+  {type:'arrow',fill:N,rot:0},{type:'arrow',fill:N,rot:90},{type:'arrow',fill:N,rot:180},{type:'arrow',fill:N,rot:270}
+ ]),[0,90,180,270,45].map(r=>({type:'arrow',fill:N,rot:r})),0,"The arrow turns 90° clockwise each time: right, down, left, up, so the next arrow points right.",1));
+ // 2 shape+fill alternation
+ Q.push(q("Which figure comes next?",sequence([
+  {type:'circle',fill:W},{type:'square',fill:N},{type:'circle',fill:W},{type:'square',fill:N}
+ ]),[{type:'circle',fill:W},{type:'circle',fill:N},{type:'square',fill:W},{type:'triangle',fill:W},{type:'square',fill:N}],0,"Two features alternate independently: circle/square and filled/unfilled. The next item repeats the filled circle.",1));
+ // 3 dots increment
+ Q.push(q("Which figure comes next?",sequence([
+  {type:'diamond',fill:N,dots:1},{type:'diamond',fill:N,dots:2},{type:'diamond',fill:N,dots:3},{type:'diamond',fill:N,dots:4}
+ ]),[1,3,4,5,6].map(d=>({type:'diamond',fill:N,dots:d})),3,"The number of dots increases by one each step: 1, 2, 3, 4, then 5.",1));
+ // 4 matrix type progression
+ let m4=[
+ {type:'circle',fill:N},{type:'square',fill:N},{type:'triangle',fill:N},
+ {type:'square',fill:N},{type:'triangle',fill:N},{type:'circle',fill:N},
+ {type:'triangle',fill:N},{type:'circle',fill:N},{type:'square',fill:N}
+ ];
+ Q.push(q("Complete the 3 × 3 matrix.",matrix(m4,8),[
+ {type:'circle',fill:N},{type:'square',fill:N},{type:'triangle',fill:N},{type:'diamond',fill:N},{type:'square',fill:W}
+ ],1,"Each row and each column contains one circle, one square and one triangle. The missing figure must be a square.",2));
+ // 5 matrix fill
+ let m5=[
+ {type:'circle',fill:W},{type:'circle',fill:N},{type:'circle',fill:W},
+ {type:'square',fill:N},{type:'square',fill:W},{type:'square',fill:N},
+ {type:'triangle',fill:W},{type:'triangle',fill:N},{type:'triangle',fill:W}
+ ];
+ Q.push(q("Complete the matrix.",matrix(m5,8),[
+ {type:'triangle',fill:W},{type:'triangle',fill:N},{type:'square',fill:W},{type:'circle',fill:W},{type:'diamond',fill:W}
+ ],0,"Rows keep the same shape. The shading alternates filled, empty, filled in the first and third rows, so the missing triangle is filled.",2));
+ // 6 odd one out rotations vs reflection
+ let fig6=svg(430,130); [0,90,180,270].forEach((r,i)=>{fig6+=shape('arrow',55+i*90,65,42,N,r)}); fig6+=shape('arrow',415,65,42,W,0)+'</svg>';
+ Q.push(q("Which one is the odd one out?",fig6,[0,1,2,3,4].map(i=>`<svg viewBox="0 0 90 80"><text x="45" y="50" text-anchor="middle" font-size="28" font-weight="800">${String.fromCharCode(65+i)}</text></svg>`),4,"A–D are the same unfilled arrow rotated. E is filled, so it is the only one with a different shading rule.",1));
+ // 7 analogy
+ let f7=svg(430,140)+shape('triangle',60,70,40,N,0)+`<text x="115" y="78" font-size="26">→</text>`+shape('triangle',170,70,40,W,90)+`<text x="230" y="78" font-size="28">::</text>`+shape('square',290,70,40,N,0)+`<text x="350" y="78" font-size="26">→</text><text x="400" y="80" font-size="34" font-weight="800">?</text></svg>`;
+ Q.push(q("Apply the same change to the square.",f7,[
+ {type:'square',fill:W,rot:90},{type:'square',fill:N,rot:90},{type:'triangle',fill:W,rot:90},{type:'square',fill:W,rot:0},{type:'diamond',fill:W,rot:90}
+ ],0,"The first shape is filled and turned 90° clockwise. Apply both changes to the square. A square looks the same after a 90° turn, but it must become filled.",2));
+ // 8 two-rule sequence
+ Q.push(q("Which figure comes next?",sequence([
+  {type:'triangle',fill:N,rot:0,dots:1},{type:'triangle',fill:W,rot:90,dots:2},{type:'triangle',fill:N,rot:180,dots:3},{type:'triangle',fill:W,rot:270,dots:4}
+ ]),[
+ {type:'triangle',fill:N,rot:0,dots:5},{type:'triangle',fill:W,rot:0,dots:5},{type:'triangle',fill:N,rot:90,dots:4},{type:'square',fill:N,dots:5},{type:'triangle',fill:N,rot:0,dots:4}
+ ],0,"Three rules run together: turn 90° clockwise, alternate empty/filled, and add one dot. So the next is an empty upright triangle with 5 dots.",3));
+ // 9 matrix rotations
+ let m9=[]; [0,90,180,90,180,270,180,270,0].forEach(r=>m9.push({type:'arrow',fill:N,rot:r}));
+ Q.push(q("Complete the matrix.",matrix(m9,8),[0,90,180,270,45].map(r=>({type:'arrow',fill:N,rot:r})),0,"Across each row the arrow turns 90° clockwise. Down each column it also turns 90° clockwise. After 180°, 270°, the missing direction is 0° (right).",3));
+ // 10 count progression
+ Q.push(q("Which figure comes next?",sequence([
+  {type:'circle',fill:N,dots:2},{type:'square',fill:N,dots:3},{type:'triangle',fill:N,dots:4},{type:'circle',fill:N,dots:5}
+ ]),[
+ {type:'square',fill:N,dots:6},{type:'triangle',fill:N,dots:6},{type:'square',fill:N,dots:5},{type:'circle',fill:N,dots:6},{type:'diamond',fill:N,dots:6}
+ ],0,"Shapes cycle circle → square → triangle, while dots increase 2, 3, 4, 5. The next is a square with 6 dots.",2));
+ // 11 code matching
+ let f11=svg(430,160)+shape('circle',60,50,34,W)+`<text x="110" y="57" font-size="20">= 24</text>`+shape('square',220,50,34,N)+`<text x="270" y="57" font-size="20">= 31</text>`+shape('circle',60,115,34,N)+`<text x="110" y="122" font-size="20">= 21</text>`+shape('square',220,115,34,W)+`<text x="290" y="123" font-size="30" font-weight="800">= ?</text></svg>`;
+ Q.push(q("The first digit codes the shape and the second digit codes the shading. What is the missing code?",f11,
+ ["34","32","14","41","24"].map(x=>`<svg viewBox="0 0 90 80"><text x="45" y="50" text-anchor="middle" font-size="25" font-weight="800">${x}</text></svg>`),1,"Circle is coded 2 and square is coded 3. Empty is coded 1 and filled is coded 4. Therefore a filled square is 34. (Answer A.)",3));
+ // correction ans 0
+ Q[Q.length-1].ans=0;
+ // 12 paper fold conceptual
+ let f12=`<svg viewBox="0 0 430 180"><rect x="45" y="35" width="120" height="110" fill="white" stroke="${W}" stroke-width="3"/><path d="M105 35 V145" stroke="${W}" stroke-width="2" stroke-dasharray="6 5"/><path d="M60 90 H150" stroke="${W}" stroke-width="3" marker-end="url(#a)"/><defs><marker id="a" markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="${W}"/></marker></defs><text x="210" y="90" font-size="22">fold left half → right</text><circle cx="135" cy="70" r="7" fill="${W}"/><text x="215" y="125" font-size="18">one hole is punched here</text></svg>`;
+ let foldOpts=[
+ `<svg viewBox="0 0 90 80"><rect x="15" y="10" width="60" height="60" fill="none" stroke="${W}" stroke-width="2"/><circle cx="30" cy="30" r="4" fill="${W}"/><circle cx="60" cy="30" r="4" fill="${W}"/></svg>`,
+ `<svg viewBox="0 0 90 80"><rect x="15" y="10" width="60" height="60" fill="none" stroke="${W}" stroke-width="2"/><circle cx="60" cy="30" r="4" fill="${W}"/></svg>`,
+ `<svg viewBox="0 0 90 80"><rect x="15" y="10" width="60" height="60" fill="none" stroke="${W}" stroke-width="2"/><circle cx="30" cy="30" r="4" fill="${W}"/><circle cx="60" cy="50" r="4" fill="${W}"/></svg>`,
+ `<svg viewBox="0 0 90 80"><rect x="15" y="10" width="60" height="60" fill="none" stroke="${W}" stroke-width="2"/><circle cx="45" cy="30" r="4" fill="${W}"/><circle cx="60" cy="30" r="4" fill="${W}"/></svg>`,
+ `<svg viewBox="0 0 90 80"><rect x="15" y="10" width="60" height="60" fill="none" stroke="${W}" stroke-width="2"/><circle cx="30" cy="50" r="4" fill="${W}"/><circle cx="60" cy="50" r="4" fill="${W}"/></svg>`
+ ];
+ Q.push(q("The paper is folded once, then one hole is punched. What will it look like when unfolded?",f12,foldOpts,0,"A single fold creates a mirror copy of the hole across the vertical fold line. The two holes must be at the same height and equally far from the centre line.",3));
+ // 13 overlapping logic
+ let f13=`<svg viewBox="0 0 430 170"><circle cx="80" cy="85" r="45" fill="none" stroke="${W}" stroke-width="4"/><rect x="145" y="40" width="90" height="90" fill="none" stroke="${W}" stroke-width="4"/><text x="270" y="92" font-size="24">combine →</text><text x="390" y="98" font-size="40" font-weight="800">?</text></svg>`;
+ let ov=[
+ `<svg viewBox="0 0 90 80"><circle cx="38" cy="40" r="25" fill="none" stroke="${W}" stroke-width="3"/><rect x="32" y="15" width="45" height="50" fill="none" stroke="${W}" stroke-width="3"/></svg>`,
+ `<svg viewBox="0 0 90 80"><circle cx="45" cy="40" r="25" fill="${W}"/><rect x="22" y="17" width="46" height="46" fill="none" stroke="${W}" stroke-width="3"/></svg>`,
+ `<svg viewBox="0 0 90 80"><rect x="20" y="15" width="50" height="50" fill="${W}"/></svg>`,
+ `<svg viewBox="0 0 90 80"><circle cx="45" cy="40" r="25" fill="none" stroke="${W}" stroke-width="3"/></svg>`,
+ `<svg viewBox="0 0 90 80"><polygon points="45,10 75,65 15,65" fill="none" stroke="${W}" stroke-width="3"/></svg>`
+ ];
+ Q.push(q("Which answer shows both figures superimposed, with neither changed?",f13,ov,0,"The correct answer must contain the original unfilled circle and the original unfilled square together. Only A preserves both.",2));
+ // 14 harder matrix fill+dots
+ let m14=[
+ {type:'circle',fill:N,dots:1},{type:'circle',fill:W,dots:2},{type:'circle',fill:N,dots:3},
+ {type:'square',fill:W,dots:2},{type:'square',fill:N,dots:3},{type:'square',fill:W,dots:4},
+ {type:'triangle',fill:N,dots:3},{type:'triangle',fill:W,dots:4},{type:'triangle',fill:N,dots:5}
+ ];
+ Q.push(q("Complete the matrix.",matrix(m14,8),[
+ {type:'triangle',fill:N,dots:5},{type:'triangle',fill:W,dots:5},{type:'square',fill:N,dots:5},{type:'triangle',fill:N,dots:4},{type:'circle',fill:N,dots:5}
+ ],0,"Shape is fixed by row. Dots increase by one across and down. Shading alternates like a chessboard. The missing cell is an empty triangle with 5 dots.",4));
+ // 15 rotation two steps
+ Q.push(q("Which figure comes next?",sequence([
+  {type:'arrow',fill:N,rot:0},{type:'arrow',fill:W,rot:180},{type:'arrow',fill:N,rot:90},{type:'arrow',fill:W,rot:270}
+ ]),[0,90,180,270,45].map((r,i)=>({type:'arrow',fill:i===0?N:N,rot:r})),2,"Directions move +180°, then −90°, then +180°. Continuing the alternating movement gives −90° from 270° = 180°. Shading alternates, so it is unfilled.",4));
+ // 16 matrix row rule combine shape
+ let f16=`<svg viewBox="0 0 430 170"><g transform="translate(15 10)">${shape('circle',55,55,38,N)}${shape('square',145,55,38,N)}<text x="100" y="63" font-size="22">+</text><text x="205" y="63" font-size="22">=</text>${shape('circle',280,55,38,N)}${shape('square',280,55,24,N)}${shape('triangle',55,125,38,N)}${shape('diamond',145,125,38,N)}<text x="100" y="133" font-size="22">+</text><text x="205" y="133" font-size="22">=</text><text x="280" y="138" text-anchor="middle" font-size="34" font-weight="800">?</text></g></svg>`;
+ let comb=[
+ `<svg viewBox="0 0 90 80">${shape('triangle',45,40,42,N)}${shape('diamond',45,40,25,N)}</svg>`,
+ `<svg viewBox="0 0 90 80">${shape('diamond',45,40,42,N)}${shape('triangle',45,40,25,N)}</svg>`,
+ mini('triangle',W),mini('diamond',N),mini('square',N)
+ ];
+ Q.push(q("Use the rule shown in the top row.",f16,comb,0,"The second shape is placed inside the first without changing either outline. So the diamond goes inside the triangle.",3));
+ // 17 position pattern
+ let posfig=`<svg viewBox="0 0 440 140">`;
+ [[45,35],[130,35],[215,35],[300,35]].forEach((p,i)=>{posfig+=`<rect x="${p[0]-28}" y="${p[1]-20}" width="56" height="80" fill="none" stroke="${W}" stroke-width="2"/>`; let pts=[[p[0]-16,p[1]-8],[p[0]+16,p[1]-8],[p[0]+16,p[1]+28],[p[0]-16,p[1]+28]]; let k=i%4; posfig+=`<circle cx="${pts[k][0]}" cy="${pts[k][1]}" r="6" fill="${W}"/>`; if(i<3)posfig+=`<text x="${p[0]+43}" y="${p[1]+24}" font-size="20">→</text>`}); posfig+=`<text x="395" y="70" font-size="34" font-weight="800">?</text></svg>`;
+ let popts=[]; for(let k=0;k<4;k++){let pts=[[28,22],[62,22],[62,58],[28,58]];popts.push(`<svg viewBox="0 0 90 80"><rect x="15" y="10" width="60" height="60" fill="none" stroke="${W}" stroke-width="2"/><circle cx="${pts[k][0]}" cy="${pts[k][1]}" r="6" fill="${W}"/></svg>`)} popts.push(mini('circle',N));
+ Q.push(q("Where should the dot be next?",posfig,popts,0,"The dot moves clockwise around the four corners: top-left, top-right, bottom-right, bottom-left, then back to top-left.",2));
+ // 18 double alternation
+ Q.push(q("Which figure comes next?",sequence([
+  {type:'circle',fill:N,rot:0,dots:1},{type:'square',fill:W,rot:0,dots:3},{type:'circle',fill:N,rot:0,dots:2},{type:'square',fill:W,rot:0,dots:4}
+ ]),[
+ {type:'circle',fill:N,dots:3},{type:'square',fill:W,dots:5},{type:'circle',fill:W,dots:3},{type:'triangle',fill:N,dots:3},{type:'circle',fill:N,dots:5}
+ ],0,"There are two interleaved sequences. Circles have 1, 2, then 3 dots. Squares have 3, 4, then 5. The next position is a circle with 3 dots.",4));
+ // 19 matrix arithmetic dots
+ let m19=[
+ {type:'circle',fill:N,dots:1},{type:'circle',fill:N,dots:2},{type:'circle',fill:N,dots:3},
+ {type:'square',fill:N,dots:2},{type:'square',fill:N,dots:3},{type:'square',fill:N,dots:5},
+ {type:'triangle',fill:N,dots:3},{type:'triangle',fill:N,dots:4},{type:'triangle',fill:N,dots:7}
+ ];
+ Q.push(q("In each row, the dots in the first two boxes determine the third. Complete the matrix.",matrix(m19,8),[5,6,7,8,4].map(d=>({type:'triangle',fill:N,dots:d})),2,"In each row, add the dots in the first two cells: 1+2=3, 2+3=5, so 3+4=7. The row shape remains a triangle.",4));
+ // 20 final mixed rule
+ let m20=[
+ {type:'circle',fill:N,rot:0,dots:1},{type:'square',fill:W,rot:90,dots:2},{type:'triangle',fill:N,rot:180,dots:3},
+ {type:'square',fill:W,rot:90,dots:2},{type:'triangle',fill:N,rot:180,dots:3},{type:'circle',fill:W,rot:270,dots:4},
+ {type:'triangle',fill:N,rot:180,dots:3},{type:'circle',fill:W,rot:270,dots:4},{type:'square',fill:N,rot:0,dots:5}
+ ];
+ Q.push(q("Complete the final matrix.",matrix(m20,8),[
+ {type:'square',fill:N,rot:0,dots:5},{type:'square',fill:W,rot:0,dots:5},{type:'circle',fill:N,rot:0,dots:5},{type:'square',fill:N,rot:90,dots:5},{type:'triangle',fill:N,rot:0,dots:5}
+ ],0,"Moving one step right or down advances the shape cycle (circle→square→triangle→circle), adds one dot, turns 90°, and flips the shading. From the preceding cell, the missing answer is an empty square with 5 dots.",5));
+
+
+ // For Tests 7–8, replace several easier items with genuinely harder multi-rule items.
+ if(t>=6){
+   Q[0]=q("Which figure comes next? Two rules change at the same time.",sequence([
+    {type:'triangle',fill:N,rot:0,dots:1},{type:'square',fill:W,rot:90,dots:3},
+    {type:'circle',fill:N,rot:180,dots:2},{type:'triangle',fill:W,rot:270,dots:4}
+   ]),[
+    {type:'square',fill:N,rot:0,dots:3},{type:'square',fill:N,rot:0,dots:5},
+    {type:'circle',fill:N,rot:0,dots:3},{type:'square',fill:W,rot:0,dots:3},
+    {type:'triangle',fill:N,rot:0,dots:5}
+   ],0,"Treat alternate positions as two sequences. Shapes cycle triangle→circle→square in odd positions, while the dot count rises 1→2→3. Shading is empty on odd positions and the rotation returns to 0°. So the next odd-position item is an empty square with 3 dots.",5);
+   Q[1]=q("Complete the matrix. Look for a rule that works both across and down.",matrix([
+    {type:'circle',fill:N,dots:1},{type:'square',fill:W,dots:2},{type:'triangle',fill:N,dots:3},
+    {type:'square',fill:W,dots:2},{type:'triangle',fill:N,dots:3},{type:'circle',fill:W,dots:4},
+    {type:'triangle',fill:N,dots:3},{type:'circle',fill:W,dots:4},{type:'square',fill:N,dots:5}
+   ],8),[
+    {type:'square',fill:N,dots:5},{type:'square',fill:W,dots:5},{type:'circle',fill:N,dots:5},
+    {type:'square',fill:N,dots:4},{type:'triangle',fill:N,dots:5}
+   ],0,"Each step right or down advances the shape cycle, adds one dot and flips the shading. The missing cell must therefore be an empty square with 5 dots.",5);
+   Q[2]=q("Which figure comes next? The changes alternate.",sequence([
+    {type:'arrow',fill:N,rot:0,dots:1},{type:'arrow',fill:W,rot:180,dots:1},
+    {type:'arrow',fill:N,rot:90,dots:2},{type:'arrow',fill:W,rot:270,dots:2}
+   ]),[
+    {type:'arrow',fill:N,rot:180,dots:3},{type:'arrow',fill:W,rot:180,dots:3},
+    {type:'arrow',fill:N,rot:0,dots:3},{type:'arrow',fill:N,rot:180,dots:2},
+    {type:'arrow',fill:N,rot:270,dots:3}
+   ],0,"Rotation alternates +180°, then −90°. Shading alternates empty/filled. The dot count repeats twice before increasing. After 270° the next −90° step gives 180°, empty, with 3 dots.",5);
+   Q[3]=q("Complete the matrix. The third cell in each row is made from the first two.",matrix([
+    {type:'circle',fill:N,dots:2},{type:'circle',fill:W,dots:3},{type:'circle',fill:N,dots:5},
+    {type:'square',fill:W,dots:1},{type:'square',fill:N,dots:4},{type:'square',fill:W,dots:5},
+    {type:'triangle',fill:N,dots:3},{type:'triangle',fill:W,dots:4},{type:'triangle',fill:N,dots:7}
+   ],8),[
+    {type:'triangle',fill:N,dots:7},{type:'triangle',fill:W,dots:7},{type:'triangle',fill:N,dots:6},
+    {type:'square',fill:N,dots:7},{type:'triangle',fill:W,dots:6}
+   ],0,"In every row, the dot counts in the first two cells are added to make the third. The shading of the third matches the first. So 3+4=7 and the answer is an empty triangle with 7 dots.",5);
+ }
+
+ // vary order and some answer positions deterministically by test
+ if(t>0){
+   const shift=t%5;
+   Q.forEach((qq,idx)=>{
+     if(idx%3===t%3){
+       const old=qq.opts.slice(), n=old.length;
+       qq.opts=old.map((_,i)=>old[(i+shift)%n]);
+       qq.ans=(qq.ans-shift+n)%n;
+     }
+   });
+ }
+ return Q;
+}
+for(let t=0;t<8;t++) tests.push(buildTest(t));
+
+let currentTest=0, qi=0, answers=[], seconds=900, tick=null;
+const $=id=>document.getElementById(id);
+function init(){
+ $('testButtons').innerHTML=tests.map((_,i)=>`<button class="testbtn" onclick="startTest(${i})">Test ${i+1}<br><span style="font-weight:500;opacity:.85">${['Stretch','Stretch+','Advanced','Advanced+','High Advanced','120–125 Challenge','125+ Challenge','130+ Challenge'][i]} · 20 questions</span></button>`).join('');
+}
+function startTest(i){
+ currentTest=i;qi=0;answers=[];seconds=900;
+ $('home').classList.add('hidden');$('results').classList.add('hidden');$('quiz').classList.remove('hidden');
+ clearInterval(tick);tick=setInterval(()=>{seconds--;renderTimer();if(seconds<=0)finishTest()},1000);
+ renderTimer();renderQ();
+}
+function renderTimer(){let m=Math.floor(seconds/60),s=seconds%60;$('timer').textContent=`${m}:${String(s).padStart(2,'0')}`}
+function renderQ(){
+ const qq=tests[currentTest][qi];
+ $('qnum').textContent=`Question ${qi+1} / 20`;
+ $('prog').style.width=`${(qi/20)*100}%`;
+ $('prompt').textContent=qq.prompt;
+ $('figure').innerHTML=qq.fig;
+ $('options').innerHTML=qq.opts.map((o,i)=>`<button class="opt" onclick="choose(${i})"><div class="small">${String.fromCharCode(65+i)}</div>${optionHTML(o)}</button>`).join('');
+}
+function choose(i){answers.push(i);qi++; if(qi>=20)finishTest(); else renderQ()}
+function quitTest(){if(confirm("Leave this test? Your current answers will not be saved.")){clearInterval(tick);showHome()}}
+function showHome(){$('quiz').classList.add('hidden');$('results').classList.add('hidden');$('home').classList.remove('hidden')}
+function finishTest(){
+ clearInterval(tick); while(answers.length<20)answers.push(-1);
+ const qs=tests[currentTest]; let correct=0, weighted=0, maxw=0;
+ qs.forEach((qq,i)=>{maxw+=qq.diff; if(answers[i]===qq.ans){correct++;weighted+=qq.diff}});
+ const acc=correct/20, ability=weighted/maxw;
+ // Deliberately conservative practice indicator: weighted performance; approximate mean 100, SD-ish 15.
+ let sas=Math.round(72 + 62*ability);
+ sas=Math.max(70,Math.min(134,sas));
+ $('quiz').classList.add('hidden');$('results').classList.remove('hidden');
+ $('resultTitle').textContent=`Test ${currentTest+1} results`;
+ $('sas').textContent=sas;$('raw').textContent=`${correct}/20`;$('pct').textContent=`${Math.round(acc*100)}%`;
+ let b=sas>=125?"Excellent practice performance: very strong pattern recognition on this set."
+      :sas>=115?"Strong practice performance. Review the missed high-difficulty rules carefully."
+      :sas>=105?"Good base. The biggest gains should come from learning to spot two or three simultaneous rules."
+      :"Useful diagnostic. Slow down, identify one feature at a time (shape, position, rotation, shading, number), then combine the rules.";
+ $('band').textContent=b;
+ $('review').innerHTML=qs.map((qq,i)=>{
+   let ok=answers[i]===qq.ans, chosen=answers[i]<0?'No answer':String.fromCharCode(65+answers[i]), right=String.fromCharCode(65+qq.ans);
+   return `<div class="review"><b class="${ok?'right':'wrong'}">Q${i+1}: ${ok?'Correct':'Not quite'} — your answer ${chosen}; correct answer ${right}</b><div>${qq.explanation}</div></div>`;
+ }).join('');
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+init();
+</script>
+</body>
+</html>
