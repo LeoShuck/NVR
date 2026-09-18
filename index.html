@@ -234,13 +234,13 @@ function buildTest(t){
 }
 for(let t=0;t<6;t++) tests.push(buildTest(t));
 
-let currentTest=0, qi=0, answers=[], seconds=900, tick=null;
+let currentTest=0, qi=0, answers=[], seconds=1800, tick=null;
 const $=id=>document.getElementById(id);
 function init(){
  $('testButtons').innerHTML=tests.map((_,i)=>`<button class="testbtn" onclick="startTest(${i})">Test ${i+1}<br><span style="font-weight:500;opacity:.85">${i<2?'Foundation → Stretch':i<4?'Stretch → Advanced':'Advanced Challenge'} · 20 questions</span></button>`).join('');
 }
 function startTest(i){
- currentTest=i;qi=0;answers=[];seconds=900;
+ currentTest=i;qi=0;answers=[];seconds=1800;
  $('home').classList.add('hidden');$('results').classList.add('hidden');$('quiz').classList.remove('hidden');
  clearInterval(tick);tick=setInterval(()=>{seconds--;renderTimer();if(seconds<=0)finishTest()},1000);
  renderTimer();renderQ();
